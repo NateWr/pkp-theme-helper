@@ -32,8 +32,8 @@ class ThemeHelper
     }
 
     /**
-     * Set the locales supported by the journal or site to the
-     * template variable passed to the function.
+     * Set the locales supported by the journal or site to a
+     * template variable
      */
     public function setLocales(array $params, $smarty): void
     {
@@ -41,7 +41,7 @@ class ThemeHelper
             return;
         }
 
-        $request = Application::get()->getRequest();
+        $request = \Application::get()->getRequest();
         $context = $request->getContext();
 
         $locales = $context
@@ -64,11 +64,11 @@ class ThemeHelper
      */
     public function hasParams(array $params, array $requiredParams, string $function): bool
     {
-        $missingParams = array_diff($requiredParams, keys($params));
         foreach ($requiredParams as $requiredParam) {
-            if (empty($params[$requiredParam]) {
+            if (empty($params[$requiredParam])) {
                 throw new MissingFunctionParam($function, $requiredParam, $requiredParams);
             }
         }
+        return true;
     }
 }
