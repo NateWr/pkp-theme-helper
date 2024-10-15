@@ -8,12 +8,12 @@ class MissingFunctionParam extends Exception
 {
   public function __construct(string $function, string $missingParam, array $requiredParams = [])
   {
-    $exampleParams = array_join(
+    $exampleParams = join(
       " ",
       array_map(fn($param) => "{$param}=\"...\"", $requiredParams)
     );
     parent::__construct(
-      "Call to {{$function} without the required `{$missingParam}` parameter. Usage: {{$function} {$exampleParams}"
-    )
+      "Call to {{$function} without the required `{$missingParam}` parameter. Usage: {{$function} {$exampleParams}}"
+    );
   }
 }
