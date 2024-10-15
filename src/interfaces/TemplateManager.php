@@ -4,5 +4,7 @@ namespace NateWr\themehelper\interfaces;
 
 interface TemplateManager
 {
-    function register_function(string $name, callable $callback);
+    public array $registered_plugins;
+    function registerPlugin(string $type, string $name, callable $callback);
+    function unregisterPlugin(string $type, string $name);
 }

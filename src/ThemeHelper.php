@@ -21,19 +21,45 @@ use NateWr\themehelper\exceptions\MissingFunctionParam;
 class ThemeHelper
 {
     /**
+     * @var TemplateManager
+     */
+    protected $templateMgr;
+
+    public function __construct($templateMgr)
+    {
+        $this->templateMgr = $templateMgr;
+    }
+
+    /**
      * Register helper functions with the Smarty
      * template manager
      *
      * @param TemplateManager $templateMgr
      */
-    public function registerTemplateFunctions($templateMgr): void
+    public function registerDefaultPlugins(): void
     {
-        $templateMgr->register_function('th_locales', [$this, 'setLocales']);
+        $this->safeRegisterPlugin('function', 'th_locales', [$this, 'setLocales']);
     }
 
     /**
-     * Set the locales supported by the journal or site to a
-     * template variable
+     * Register a smarty plugin safely
+     *
+     * This wrapper function prevents a fatal error if a smarty plugin
+     * with the same name has already been registered.
+     */
+    public function safeRegisterPlugin(string $type, string $name, callable $callback, bool $override = false): void
+    {
+        $registered = isset($this->templateMgr->registered_plugins[$type][$name]);
+        if ($registered && $override) {
+            $this->templateMgr->unregisterPlugin($type, $name);
+            $this->templateMgr->registerPlugin($type, $name, $callback);
+        } elseif (!$registered) {
+            $this->templateMgr->registerPlugin($type, $name, $callback);
+        }
+    }
+
+    /**
+     * Set the locales supported by the journal or site
      */
     public function setLocales(array $params, $smarty): void
     {
