@@ -2,6 +2,9 @@
 
 namespace NateWr\themehelper;
 
+use Application;
+use Config;
+use HookRegistry;
 use NateWr\themehelper\interfaces\TemplateManager;
 use NateWr\themehelper\exceptions\MissingFunctionParam;
 
@@ -39,6 +42,7 @@ class ThemeHelper
     public function registerDefaultPlugins(): void
     {
         $this->safeRegisterPlugin('function', 'th_locales', [$this, 'setLocales']);
+        $this->safeRegisterPlugin('function', 'th_filter_galleys', [$this, 'filterGalleys']);
     }
 
     /**
@@ -78,6 +82,41 @@ class ThemeHelper
     }
 
     /**
+     * Filter a list of galleys with their URL and label based on the passed params
+     *
+     * Excludes galleys that have no file or remote URL.
+     */
+    public function filterGalleys(array $params, $smarty): void
+    {
+        if (!$this->hasParams($params, ['assign', 'galleys'], 'th_filter_galleys')) {
+            return;
+        }
+
+        $galleys = (array) $params['galleys'];
+        $genreIds = isset($params['genreIds']) ? (array) $params['genreIds'] : [];
+        $remotes = isset($params['remotes']) ? (bool) $params['remotes'] : false;
+
+        $filteredGalleys = collect([]);
+
+        foreach ($galleys as $galley) {
+            if ($galley->getRemoteUrl() && $remotes) {
+                $filteredGalleys->push($galley);
+                continue;
+            }
+            $file = $galley->getFile();
+            if (!$file) {
+                continue;
+            }
+            if (!count($genreIds) || in_array($file->getGenreId(), $genreIds)) {
+                $filteredGalleys->push($galley);
+                continue;
+            }
+        }
+
+        $smarty->assign($params['assign'], $filteredGalleys);
+    }
+
+    /**
      * Throw an exception if any of the required parameters
      * are missing from the array.
      *
@@ -96,5 +135,40 @@ class ThemeHelper
             }
         }
         return true;
+    }
+
+    /**
+     * Add {$currentPage} and {$lastPage} variables to templates
+     * that have paginated data.
+     *
+     * @param array $templates (Optional) Pass a custom list of templates
+     *   that the pagination data should be added to. These templates must
+     *   have the `total` and `showingStart` variables assigned to them.
+     *   If not passed, it will assign them to all supported core templates.
+     */
+    public function addPaginationData(array $templates = []): void
+    {
+        if (!count($templates)) {
+            $templates = [
+                'frontend/pages/issueArchive.tpl',
+                'frontend/pages/catalog.tpl',
+                'frontend/pages/catalogSeries.tpl',
+                'frontend/pages/catalogCategory.tpl',
+            ];
+        }
+        HookRegistry::register('TemplateManager::display', function(string $hookName, array $args) use ($templates) {
+            $context = Application::get()->getRequest()->getContext();
+            $total = $this->templateMgr->getTemplateVars('total');
+            $showingStart = $this->templateMgr->getTemplateVars('showingStart');
+            $perPage = $context?->getData('itemsPerPage')
+                ? $context->getData('itemsPerPage')
+                : Config::getVar('interface', 'items_per_page');
+            $currentPage = (int) ceil($showingStart / $perPage);
+
+            $this->templateMgr->assign([
+                'currentPage' => $currentPage,
+                'lastPage' => ceil($total / $perPage),
+            ]);
+        });
     }
 }
