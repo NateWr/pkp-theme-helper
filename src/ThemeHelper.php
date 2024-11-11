@@ -25,6 +25,12 @@ use TemplateManager;
 class ThemeHelper
 {
     /**
+     * Number of page buttons to display before truncating
+     * the list of pages
+     */
+    public const DEFAULT_MAX_PAGES = 9;
+
+    /**
      * @var TemplatePlugin[]
      */
     protected array $templatePlugins = [];
@@ -56,6 +62,13 @@ class ThemeHelper
                 type: 'function',
                 name: 'th_filter_galleys',
                 callback: [$this, 'filterGalleys']
+            )
+        );
+        $this->addTemplatePlugin(
+            new TemplatePlugin(
+                type: 'function',
+                name: 'th_pagination',
+                callback: [$this, 'getPages']
             )
         );
     }
@@ -193,37 +206,88 @@ class ThemeHelper
     }
 
     /**
-     * Add {$currentPage} and {$lastPage} variables to templates
-     * that have paginated data.
+     * Get an array of page numbers for pagination components
      *
-     * @param array $templates (Optional) Pass a custom list of templates
-     *   that the pagination data should be added to. These templates must
-     *   have the `total` and `showingStart` variables assigned to them.
-     *   If not passed, it will assign them to all supported core templates.
+     * The list of page numbers will be truncated so that it is
+     * no more than maxPages. Skipped pages are returned as -1 in
+     * the page list.
+     *
+     * Example result:
+     *
+     * assignCurrent = 23
+     * assignPages = [1, -1, 21, 22, 23, 24, 25, -1, 82]
+     *
+     * @example {th_pagination
+     *   assignPages="pages"
+     *   assignCurrent="current"
+     *   perPage="10"
+     *   total="200"
+     *   start="1"
+     * }
+     * @param array $params
+     *   @option string assignPages Variable to assign the list of page numbers
+     *   @option string assignCurrent Variable to assign the current page to
+     *   @option int perPage Number of items on each page
+     *   @option int total Total number of items
+     *   @option int start Number of first item on current page, eg - 21 = 21st item in total list of items
+     *   @option int maxPages (Optional) Max number of page numbers to show at once
      */
-    public function addPaginationData(array $templates = []): void
+    public function getPages(array $params, $smarty): void
     {
-        if (!count($templates)) {
-            $templates = [
-                'frontend/pages/issueArchive.tpl',
-                'frontend/pages/catalog.tpl',
-                'frontend/pages/catalogSeries.tpl',
-                'frontend/pages/catalogCategory.tpl',
-            ];
+        if (!$this->hasParams($params, ['assignPages', 'assignCurrent', 'perPage', 'total', 'start'], 'th_pagination')) {
+            return;
         }
-        HookRegistry::register('TemplateManager::display', function(string $hookName, array $args) use ($templates) {
-            $context = Application::get()->getRequest()->getContext();
-            $total = $this->templateMgr->getTemplateVars('total');
-            $showingStart = $this->templateMgr->getTemplateVars('showingStart');
-            $perPage = $context?->getData('itemsPerPage')
-                ? $context->getData('itemsPerPage')
-                : Config::getVar('interface', 'items_per_page');
-            $currentPage = (int) ceil($showingStart / $perPage);
 
-            $this->templateMgr->assign([
-                'currentPage' => $currentPage,
-                'lastPage' => ceil($total / $perPage),
-            ]);
-        });
+        $perPage = (int) $params['perPage'];
+        $start = (int) $params['start'];
+        $total = (int) $params['total'];
+        $maxPages = $params['maxPages']
+            ? (int) $params['maxPages']
+            : self::DEFAULT_MAX_PAGES;
+
+        $currentPage = (int) ceil($start / $perPage);
+        $totalPages = (int) ceil($total / $perPage);
+
+        $pages = [];
+        for ($i = 1; $i <= $totalPages; $i++) {
+            $pages[] = $i;
+        }
+
+        if ($totalPages > $maxPages) {
+            if ($currentPage <= $maxPages - 4) {
+                $pages = array_filter(
+                    array_merge(
+                        array_slice($pages, 0, $maxPages - 2),
+                        [-1],
+                        array_slice($pages, $totalPages - 1),
+                    )
+                );
+            } elseif ($currentPage >= ($totalPages - 4)) {
+                $end = $totalPages - $maxPages + 2;
+                $pages = array_filter(
+                    array_merge(
+                        array_slice($pages, 0, 1),
+                        [-1],
+                        array_slice($pages, $end),
+                    )
+                );
+            } else {
+                $front = $currentPage - floor($maxPages / 2) + 1;
+                $pages = array_filter(
+                    array_merge(
+                        array_slice($pages, 0, 1),
+                        [-1],
+                        array_slice($pages, $front, $maxPages - 4),
+                        [-1],
+                        array_slice($pages, -1),
+                    )
+                );
+            }
+        }
+
+        $smarty->assign([
+            $params['assignPages'] => $pages,
+            $params['assignCurrent'] => $currentPage,
+        ]);
     }
 }
