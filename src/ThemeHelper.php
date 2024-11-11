@@ -5,8 +5,9 @@ namespace NateWr\themehelper;
 use Application;
 use Config;
 use HookRegistry;
-use NateWr\themehelper\interfaces\TemplateManager;
+use NateWr\themehelper\TemplatePlugin;
 use NateWr\themehelper\exceptions\MissingFunctionParam;
+use TemplateManager;
 
 /**
  * A helper class for building custom themes for
@@ -24,25 +25,65 @@ use NateWr\themehelper\exceptions\MissingFunctionParam;
 class ThemeHelper
 {
     /**
-     * @var TemplateManager
+     * @var TemplatePlugin[]
      */
-    protected $templateMgr;
+    protected array $templatePlugins = [];
 
-    public function __construct($templateMgr)
-    {
+    public function __construct(
+        protected TemplateManager $templateMgr
+    ) {
         $this->templateMgr = $templateMgr;
+        HookRegistry::register('TemplateManager::display', [$this, 'registerTemplatePlugins']);
     }
 
     /**
-     * Register helper functions with the Smarty
+     * Register common helper functions with the Smarty
      * template manager
      *
      * @param TemplateManager $templateMgr
      */
-    public function registerDefaultPlugins(): void
+    public function addCommonTemplatePlugins(): void
     {
-        $this->safeRegisterPlugin('function', 'th_locales', [$this, 'setLocales']);
-        $this->safeRegisterPlugin('function', 'th_filter_galleys', [$this, 'filterGalleys']);
+        $this->addTemplatePlugin(
+            new TemplatePlugin(
+                type: 'function',
+                name: 'th_locales',
+                callback: [$this, 'setLocales']
+            )
+        );
+        $this->addTemplatePlugin(
+            new TemplatePlugin(
+                type: 'function',
+                name: 'th_filter_galleys',
+                callback: [$this, 'filterGalleys']
+            )
+        );
+    }
+
+    /**
+     * Add a template plugin
+     */
+    public function addTemplatePlugin(TemplatePlugin $plugin): void
+    {
+        $this->templatePlugins[] = $plugin;
+    }
+
+    /**
+     * Register template plugins
+     *
+     * This method is called with the TemplateManager::display
+     * hook in order to ensure that the template plugins are
+     * registered after all core plugins have been registered.
+     *
+     * This allows core plugins to be overridden.
+     */
+    public function registerTemplatePlugins(string $hookName, array $args): bool
+    {
+        foreach ($this->templatePlugins as $plugin) {
+            $this->safeRegisterTemplatePlugin($plugin);
+        }
+        return false;
+
     }
 
     /**
@@ -51,19 +92,23 @@ class ThemeHelper
      * This wrapper function prevents a fatal error if a smarty plugin
      * with the same name has already been registered.
      */
-    public function safeRegisterPlugin(string $type, string $name, callable $callback, bool $override = false): void
+    protected function safeRegisterTemplatePlugin(TemplatePlugin $plugin): void
     {
-        $registered = isset($this->templateMgr->registered_plugins[$type][$name]);
-        if ($registered && $override) {
-            $this->templateMgr->unregisterPlugin($type, $name);
-            $this->templateMgr->registerPlugin($type, $name, $callback);
+        $registered = isset($this->templateMgr->registered_plugins[$plugin->type][$plugin->name]);
+        if ($registered && $plugin->override) {
+            $this->templateMgr->unregisterPlugin($plugin->type, $plugin->name);
+            $this->templateMgr->registerPlugin($plugin->type, $plugin->name, $plugin->callback);
         } elseif (!$registered) {
-            $this->templateMgr->registerPlugin($type, $name, $callback);
+            $this->templateMgr->registerPlugin($plugin->type, $plugin->name, $plugin->callback);
         }
     }
 
     /**
      * Set the locales supported by the journal or site
+     *
+     * @example {th_locales assign="languages"}
+     * @param array $params
+     *   @option string assign Variable to assign the result to
      */
     public function setLocales(array $params, $smarty): void
     {
@@ -82,9 +127,19 @@ class ThemeHelper
     }
 
     /**
-     * Filter a list of galleys with their URL and label based on the passed params
+     * Filter a list of galleys by genreId and remoteUrl
      *
-     * Excludes galleys that have no file or remote URL.
+     * @example {th_filter_galleys
+     *   assign="galleys"
+     *   galleys=$article->getGalleys()
+     *   genreIds=$primaryGenreIds
+     *   remotes=true
+     * }
+     * @param array $params
+     *   @option string assign Variable to assign the result to
+     *   @option Galley[] galleys List of galleys to filter
+     *   @option int[] genreIds List of genres to include in result
+     *   @option bool remotes Whether to include galleys with remote urls
      */
     public function filterGalleys(array $params, $smarty): void
     {
