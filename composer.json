@@ -1,14 +1,20 @@
 {
-  "name": "NateWr/pkp-theme-helper",
-  "type": "library",
-  "license": "GPL3",
-  "description": "A library of helper functions to build themes for PKP software (OJS, OMP, and OPS).",
-  "autoload": {
-      "psr-4": {
-          "NateWr\\themehelper\\": "src/"
-      }
-  },
-  "require": {
-      "php": ">=8.1"
-  }
+    "name": "NateWr/pkp-theme-helper",
+    "type": "library",
+    "license": "GPL3",
+    "description": "A library of helper functions to build themes for PKP software (OJS, OMP, and OPS).",
+    "autoload": {
+        "psr-4": {
+            "NateWr\\themehelper\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Nate Wright",
+            "email": "natew@notthisway.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1"
+    }
 }
