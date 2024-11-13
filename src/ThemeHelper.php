@@ -2,8 +2,6 @@
 
 namespace NateWr\themehelper;
 
-use Application;
-use Config;
 use HookRegistry;
 use NateWr\themehelper\TemplatePlugin;
 use NateWr\themehelper\exceptions\MissingFunctionParam;
