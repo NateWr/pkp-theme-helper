@@ -1,7 +1,7 @@
 {
     "name": "natewr/pkp-theme-helper",
     "type": "library",
-    "license": "GPL3",
+    "license": "GPL-3.0-or-later",
     "description": "A library of helper functions to build themes for PKP software (OJS, OMP, and OPS).",
     "autoload": {
         "psr-4": {
