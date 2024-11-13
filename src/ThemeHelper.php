@@ -117,7 +117,9 @@ class ThemeHelper
     /**
      * Set the locales supported by the journal or site
      *
-     * @example {th_locales assign="languages"}
+     * @example {th_locales
+     *   assign="languages"
+     * }
      * @param array $params
      *   @option string assign Variable to assign the result to
      */
