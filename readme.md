@@ -96,8 +96,10 @@ the page list.
 
 Example result:
 
+```
 assignCurrent = 23
 assignPages = [1, -1, 21, 22, 23, 24, 25, -1, 82]
+```
 
 *@option* `string` **assignPages** Variable to assign the list of page numbers<br>
 *@option* `string` **assignCurrent** Variable to assign the current page to<br>
@@ -176,7 +178,7 @@ Then use the function in your templates like this.
 {/if}
 ```
 
-By default, `ThemeHelper` will not override an existing plugin. If you want to replace an existing plugin, like functions registered by `PKPTemplateManager`, use the `override` param.
+By default, `ThemeHelper` will not override an existing template plugin. If you want to replace an existing template plugin, like functions registered by `PKPTemplateManager`, use the `override` param.
 
 ```php
 $this->themeHelper->addTemplatePlugin(
